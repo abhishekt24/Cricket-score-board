@@ -2,9 +2,9 @@
 from flask import Flask, jsonify
 from flask import abort
 from flask import request
-
 import mysql.connector
 
+#mysql connection
 mydb = mysql.connector.connect(
   host="localhost",
   user="root",
@@ -12,9 +12,11 @@ mydb = mysql.connector.connect(
   database="cricket_score"
 )
 
+
 over_data={"run":0,"wickets":0,"extras":0,"player1_score":0,"player2_score":0}
-overs=[{}]
+
 mycursor = mydb.cursor()
+#fetch latest ball from the database
 sql="select ball_num from ball_wise order by over_num,ball_num desc limit 1"
 mycursor.execute(sql)
 count=int(mycursor.fetchone()[0])
@@ -38,13 +40,14 @@ def create_task():
 	}
 	return update_database(ball)
 
-
+#function to update score in the database
 def update_database(ball):
 	global count
 	wicket =0
 	extras =0
 	player1 =0
 	player2 =0
+	#if the ball is the first ball of the over
 	if(count==0):
 		if(ball["wicket"]==True):
 			wicket=1
@@ -54,6 +57,7 @@ def update_database(ball):
 			player1=ball["run"]
 		if(ball["player_id"]==2 and ball["extra"]=="none"):
 			player2=ball["run"] 
+		#insert values into overs table data
 		sql="INSERT INTO overs_data values (%s,%s,%s,%s,%s,%s)"
         	#sql = "INSERT INTO customers (name, address) VALUES (%s, %s)"
 		num=ball['over_num']+1
@@ -68,6 +72,7 @@ def update_database(ball):
 			player1=ball["run"]
 		if(ball["player_id"]==2 and ball["extra"]=="none"):
 			player2=ball["run"] 
+		#if the wicket falls change the player1 and player2 and make runs of that player as 0
 		if(ball["wicket"]==True):
 			wicket=1
 			if(ball["player_id"]==1 and ball["run"]%2==0):
@@ -83,13 +88,14 @@ def update_database(ball):
 		mycursor.execute(sql,val)
 		mydb.commit()
 		
+	#insert data into balls table where data of every ball is stored
 	sql="INSERT INTO ball_wise values(%s,%s,%s,%s,%s,%s)"
 	val=(ball['ball_num'],ball['over_num']+1,ball['run'],ball['wicket'],ball['extra'],ball['player_id'])
 	mycursor.execute(sql,val)
 	mydb.commit()
 
     
-
+	
 	if(ball["extra"]!="NB" and ball["extra"]!="WD"):
 		count+=1
 	if(count==6):
@@ -99,8 +105,17 @@ def update_database(ball):
 	return jsonify({'ball': ball}), 201
 
 
-@app.route('/scores/api/v1.0/over_data',methods=['GET'])
-def send_overs_data():
-	 return jsonify({'over': overs})
+@app.route('/scores/api/v1.0/over_data/<int:over>',methods=['GET'])
+def send_overs_data(over):
+
+	if(over<=0): 			#if the invalid over is entered
+		return "invalid over"	
+	sql="select * from overs_data where over_num="+str(over)
+	mycursor.execute(sql)
+	data=mycursor.fetchone()
+	field_names=['over_num','runs','wickets','extras','player1','player2']
+	over_data=dict(zip(field_names, data))
+	if(data is not None):
+		return jsonify({'over': over_data})
 if __name__ == '__main__':
     app.run(debug=True)
