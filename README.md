@@ -8,4 +8,5 @@ TO run it:-
 3.Run these commands on the terminal
 
   export FLASK_APP=app.py
+  
   flask run
