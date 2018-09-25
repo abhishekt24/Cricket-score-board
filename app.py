@@ -37,6 +37,12 @@ player1=mycursor.fetchone()[0]
 mycursor.execute("select runs from players where player_no="+str(p2))
 player1=mycursor.fetchone()[0]
 
+mycursor.execute("select player_no from players where status='not out'")
+res=mycursor.fetchall()
+if res is not None:
+	p1=res[0][0]
+	p2=res[0][0]
+
 # add ball data
 @app.route('/scores/api/v1.0/add_ball', methods=['POST'])
 def create_task():
